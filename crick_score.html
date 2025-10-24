@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cricket Score Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #ffffff;
+    }
+    h1, h2 {
+      margin: 10px;
+    }
+    .target {
+      position: absolute;
+      top: 9px;
+      left: 10px;
+      font-weight: bold;
+      font-size: 24px;
+      /* color: #ff385c; */
+      color: #e41d59;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      justify-content: center;
+      gap: 17px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      color: white;
+    }
+    .green { background-color: #4CAF50; }
+    /* .red { background-color: #f44336; } */
+    .red { background-color: #e41d59; }
+    /* .blue { background-color: #2196F3;} */
+    .blue { background-color: #006aaa;}
+    .modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .modal button {
+      margin: 5px;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="target" id="targetDisplay"></div><br>
+  <h1>Total Score: <span id="score">0</span></h1>
+  <h2>Over: <span id="over">0.0</span></h2>
+
+  <div class="grid">
+    <button class="green" onclick="addRuns(0)">0</button>
+    <button class="green" onclick="addRuns(1)">1</button>
+    <button class="green" onclick="addRuns(2)">2</button>
+    <button class="green" onclick="addRuns(3)">3</button>
+    <button class="green" onclick="addRuns(4)">4</button>
+    <button class="green" onclick="addRuns(5)">5</button>
+    <button class="green" onclick="addRuns(6)">6</button>
+    <button class="red" onclick="addWicket()">Wicket</button>
+    <button class="green" onclick="addWide()">Wide</button>
+    <button class="green" onclick="showNoBallModal()">No Ball</button>
+  </div>
+
+  <br>
+  <button class="blue" style="margin-right: 10px;" onclick="undo()">Undo</button>
+  <button class="red" style="margin-right: 10px;" onclick="newMatch()">New Match</button>
+  <button class="blue" onclick="nextInnings()">Next Innings</button>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Modal for No Ball -->
+  <div class="modal" id="noBallModal">
+    <h3>Select No Ball Runs</h3>
+    <div id="noBallButtons"></div>
+    <button class="red" onclick="closeModal()">Cancel</button>
+  </div>
+
+  <script>
+    let score = 0, balls = 0, wickets = 0;
+    let overs = 0, ballsInOver = 0;
+    let history = [];
+    let target = null;
+    let inning = 1;
+
+    function updateDisplay() {
+      document.getElementById("score").innerText = score;
+      document.getElementById("over").innerText = overs + "." + ballsInOver;
+      document.getElementById("targetDisplay").innerText = 
+        inning === 2 && target !== null ? "Target: " + target : "";
+    }
+
+    function addRuns(runs) {
+      score += runs;
+      addBall();
+      history.push({ type: "run", runs });
+      updateDisplay();
+    }
+
+    function addWicket() {
+      wickets++;
+      addBall();
+      history.push({ type: "wicket" });
+      updateDisplay();
+    }
+
+    function addWide() {
+      score++;
+      history.push({ type: "wide" });
+      updateDisplay();
+    }
+
+    function showNoBallModal() {
+      const modal = document.getElementById("noBallModal");
+      const overlay = document.getElementById("overlay");
+      const buttons = document.getElementById("noBallButtons");
+      buttons.innerHTML = "";
+      for (let i = 0; i <= 6; i++) {
+        const btn = document.createElement("button");
+        btn.innerText = i + " Run(s)";
+        btn.className = "green";
+        btn.onclick = () => addNoBall(i);
+        buttons.appendChild(btn);
+      }
+      overlay.style.display = "block";
+      modal.style.display = "block";
+    }
+
+    function closeModal() {
+      document.getElementById("overlay").style.display = "none";
+      document.getElementById("noBallModal").style.display = "none";
+    }
+
+    function addNoBall(extraRuns) {
+      score += 1 + extraRuns;
+      history.push({ type: "noBall", runs: 1 + extraRuns });
+      closeModal();
+      updateDisplay();
+    }
+
+    function addBall() {
+      balls++;
+      ballsInOver++;
+      if (ballsInOver === 6) {
+        ballsInOver = 0;
+        overs++;
+      }
+    }
+
+    function undo() {
+      const last = history.pop();
+      if (!last) return;
+      if (last.type === "run") {
+        score -= last.runs;
+        removeBall();
+      } else if (last.type === "wicket") {
+        wickets--;
+        removeBall();
+      } else if (last.type === "wide") {
+        score--;
+      } else if (last.type === "noBall") {
+        score -= last.runs;
+      }
+      updateDisplay();
+    }
+
+    function removeBall() {
+      if (ballsInOver === 0 && overs > 0) {
+        overs--;
+        ballsInOver = 5;
+      } else if (ballsInOver > 0) {
+        ballsInOver--;
+      }
+    }
+
+    function newMatch() {
+      score = 0;
+      wickets = 0;
+      overs = 0;
+      ballsInOver = 0;
+      balls = 0;
+      history = [];
+      target = null;
+      inning = 1;
+      updateDisplay();
+    }
+
+    function nextInnings() {
+      target = score + 1;
+      score = 0;
+      wickets = 0;
+      overs = 0;
+      ballsInOver = 0;
+      balls = 0;
+      history = [];
+      inning = 2;
+      updateDisplay();
+    }
+
+    updateDisplay();
+  </script>
+</body>
+</html>
